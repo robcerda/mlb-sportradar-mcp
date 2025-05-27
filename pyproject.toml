@@ -5,7 +5,7 @@ description = "MCP server for MLB SportRadar API integration"
 license = {text = "MIT"}
 readme = "README.md"
 authors = [
-    { name = "Rob", email = "rob@example.com" }
+    { name = "Rob CErda", email = "me@robcerda.com" }
 ]
 requires-python = ">=3.12"
 dependencies = [
@@ -29,8 +29,8 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/yourusername/mlb-sportradar-mcp"
-"Bug Tracker" = "https://github.com/yourusername/mlb-sportradar-mcp/issues"
+"Homepage" = "https://github.com/robcerda/mlb-sportradar-mcp"
+"Bug Tracker" = "https://github.com/robcerda/mlb-sportradar-mcp/issues"
 
 [project.scripts]
 mlb-sportradar-mcp = "mlb_sportradar_mcp.server:main"
