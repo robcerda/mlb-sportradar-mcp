@@ -1,59 +1,84 @@
 """
 MLB SportRadar MCP Server
 
-This module implements a Model Context Protocol (MCP) server for connecting
-Claude with the SportRadar MLB API. It provides tools for retrieving MLB
-game data, standings, player statistics, and more.
+This module implements a comprehensive Model Context Protocol (MCP) server for connecting
+Claude with the SportRadar MLB API. It provides extensive tools for retrieving MLB
+game data, Statcast analytics, player statistics, and broadcast-quality insights.
 
 Main Features:
-    - Daily MLB schedules
-    - Game summaries and boxscores
-    - Team standings
-    - Player profiles and statistics
-    - League leaders
+    - Daily MLB schedules and live game feeds
+    - Game summaries, boxscores, and real-time updates
+    - Team standings and comprehensive rankings
+    - Player profiles, career stats, and seasonal performance
+    - Statcast data and advanced analytics
+    - Situational statistics and trend analysis
+    - Matchup analysis (team vs team, pitcher vs batter)
+    - Weather conditions and ballpark factors
+    - Prospect rankings and draft information
     - Error handling with user-friendly messages
     - Configurable parameters with environment variable support
 
 Usage:
-    This server is designed to be run as a standalone script and exposes several MCP tools
-    for use with Claude Desktop or other MCP-compatible clients. The server loads configuration
-    from environment variables (optionally via a .env file) and communicates with the SportRadar API.
+    This server is designed to be run as a standalone script and exposes comprehensive MCP tools
+    for use with Claude Desktop or other MCP-compatible clients. Perfect for broadcast commentary,
+    statistical analysis, and real-time game insights.
 
     To run the server:
         $ python src/mlb_sportradar_mcp/server.py
 
     MCP tools provided:
-        - get_daily_schedule
-        - get_game_summary
-        - get_game_boxscore
-        - get_game_play_by_play
-        - get_game_pitch_metrics
-        - get_standings
-        - get_player_profile
-        - get_player_seasonal_stats
-        - get_team_profile
-        - get_team_roster
-        - get_seasonal_statistics
-        - get_league_leaders
-        - get_seasonal_splits
-        - get_injuries
-        - get_transactions
-        - get_draft_summary
-        - get_team_hierarchy
+        Game Data & Live Updates:
+            - get_daily_schedule: Daily game schedules
+            - get_game_summary: Game summaries and results
+            - get_game_boxscore: Detailed boxscores
+            - get_game_play_by_play: Play-by-play data
+            - get_live_game_feed: Real-time game updates
+            - get_event_tracking: Detailed event tracking with Statcast
+            - get_weather_conditions: Weather impact analysis
+
+        Statcast & Advanced Analytics:
+            - get_game_pitch_metrics: Pitch-level Statcast data
+            - get_seasonal_pitch_metrics: Player season pitching analytics
+            - get_statcast_leaders: Statcast leaderboards
+            - get_venue_stats: Ballpark factors and statistics
+
+        Player & Team Statistics:
+            - get_player_profile: Player information and stats
+            - get_player_seasonal_stats: Seasonal performance
+            - get_player_career_stats: Complete career statistics
+            - get_team_profile: Team information
+            - get_team_roster: Current team rosters
+            - get_seasonal_statistics: Team seasonal stats
+            - get_team_rankings: Comprehensive team rankings
+
+        Situational & Matchup Analysis:
+            - get_situational_stats: Clutch, RISP, late-inning performance
+            - get_seasonal_splits: Home/away, vs lefty/righty splits
+            - get_team_matchup_stats: Head-to-head team statistics
+            - get_pitcher_vs_batter_stats: Individual matchup history
+            - get_trend_analysis: Performance trends over time
+
+        League Information:
+            - get_standings: League and division standings
+            - get_league_leaders: Statistical leaders
+            - get_team_hierarchy: League structure
+            - get_injuries: Current injury reports
+            - get_transactions: Player transactions
+            - get_draft_summary: Draft information
+            - get_prospect_rankings: Minor league prospects
 
     See the README for more details on configuration and usage.
 """
 
+import logging
 import os
 import sys
-import logging
-import asyncio
-import json
-from typing import Dict, Any, List, Optional
-from datetime import datetime, date
+from datetime import date, datetime
+from typing import Any, Dict, Optional
+
+import httpx
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
-import httpx
 
 # Configure logging to stderr
 logging.basicConfig(
@@ -77,35 +102,36 @@ mcp = FastMCP("mlb-sportradar-mcp")
 # SportRadar MLB API base URL
 BASE_URL = "https://api.sportradar.com/mlb/trial/v8"
 
-async def get_http_client():
+
+async def get_http_client() -> httpx.AsyncClient:
     """Get or create HTTP client with proper headers."""
     return httpx.AsyncClient(
-        base_url=BASE_URL,
-        params={"api_key": SPORTRADAR_API_KEY},
-        timeout=30.0
+        base_url=BASE_URL, params={"api_key": SPORTRADAR_API_KEY}, timeout=30.0
     )
 
+
 @mcp.tool()
-async def get_daily_schedule(date_str: Optional[str] = None) -> Dict:
+async def get_daily_schedule(date_str: Optional[str] = None) -> Dict[str, Any]:
     """Get MLB schedule for a specific date (YYYY-MM-DD format) or today if not specified."""
     if date_str is None:
         date_str = date.today().strftime("%Y-%m-%d")
-    
+
     async with await get_http_client() as client:
         try:
             # Format: /en/games/{year}/{month}/{day}/schedule.json
             date_parts = date_str.split("-")
             year, month, day = date_parts[0], date_parts[1], date_parts[2]
-            
+
             response = await client.get(f"/en/games/{year}/{month}/{day}/schedule.json")
             response.raise_for_status()
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         except Exception as e:
             logger.error(f"Error getting daily schedule for {date_str}: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_game_summary(game_id: str) -> Dict:
+async def get_game_summary(game_id: str) -> Dict[str, Any]:
     """Get summary information for a specific MLB game."""
     async with await get_http_client() as client:
         try:
@@ -116,8 +142,9 @@ async def get_game_summary(game_id: str) -> Dict:
             logger.error(f"Error getting game summary for {game_id}: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_game_boxscore(game_id: str) -> Dict:
+async def get_game_boxscore(game_id: str) -> Dict[str, Any]:
     """Get detailed boxscore for a specific MLB game."""
     async with await get_http_client() as client:
         try:
@@ -128,37 +155,36 @@ async def get_game_boxscore(game_id: str) -> Dict:
             logger.error(f"Error getting game boxscore for {game_id}: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_standings(
-    year: Optional[int] = None,
-    league: Optional[str] = None
-) -> Dict:
-    """Get MLB standings for a specific year and league (AL/NL) or current season if not specified."""
+async def get_standings(year: Optional[int] = None, league: Optional[str] = None) -> Dict[str, Any]:
+    """Get MLB standings for a specific year and league (AL/NL) or current season."""
     if year is None:
         year = datetime.now().year
-    
+
     async with await get_http_client() as client:
         try:
             url = f"/en/seasons/{year}/standings.json"
             response = await client.get(url)
             response.raise_for_status()
             data = response.json()
-            
+
             # Filter by league if specified
-            if league and league.upper() in ['AL', 'NL']:
+            if league and league.upper() in ["AL", "NL"]:
                 # Filter standings by league
-                if 'standings' in data and 'leagues' in data['standings']:
-                    for league_data in data['standings']['leagues']:
-                        if league_data.get('alias', '').upper() == league.upper():
-                            return {'league': league_data}
-            
+                if "standings" in data and "leagues" in data["standings"]:
+                    for league_data in data["standings"]["leagues"]:
+                        if league_data.get("alias", "").upper() == league.upper():
+                            return {"league": league_data}
+
             return data
         except Exception as e:
             logger.error(f"Error getting standings for {year}: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_player_profile(player_id: str) -> Dict:
+async def get_player_profile(player_id: str) -> Dict[str, Any]:
     """Get detailed profile information for a specific MLB player."""
     async with await get_http_client() as client:
         try:
@@ -169,8 +195,9 @@ async def get_player_profile(player_id: str) -> Dict:
             logger.error(f"Error getting player profile for {player_id}: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_team_profile(team_id: str) -> Dict:
+async def get_team_profile(team_id: str) -> Dict[str, Any]:
     """Get detailed profile information for a specific MLB team."""
     async with await get_http_client() as client:
         try:
@@ -181,38 +208,39 @@ async def get_team_profile(team_id: str) -> Dict:
             logger.error(f"Error getting team profile for {team_id}: {str(e)}")
             raise
 
+
 @mcp.tool()
 async def get_league_leaders(
-    year: Optional[int] = None,
-    category: Optional[str] = "hitting"
-) -> Dict:
+    year: Optional[int] = None, category: Optional[str] = "hitting"
+) -> Dict[str, Any]:
     """Get MLB league leaders for a specific year and category (hitting/pitching)."""
     if year is None:
         year = datetime.now().year
-    
+
     async with await get_http_client() as client:
         try:
             response = await client.get(f"/en/seasons/{year}/leaders.json")
             response.raise_for_status()
             data = response.json()
-            
+
             # Filter by category if specified
-            if category and category.lower() in ['hitting', 'pitching']:
-                if 'leaders' in data:
+            if category and category.lower() in ["hitting", "pitching"]:
+                if "leaders" in data:
                     filtered_leaders = {}
-                    for key, value in data['leaders'].items():
+                    for key, value in data["leaders"].items():
                         if category.lower() in key.lower():
                             filtered_leaders[key] = value
                     if filtered_leaders:
-                        return {'leaders': filtered_leaders, 'category': category}
-            
+                        return {"leaders": filtered_leaders, "category": category}
+
             return data
         except Exception as e:
             logger.error(f"Error getting league leaders for {year}: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_team_roster(team_id: str) -> Dict:
+async def get_team_roster(team_id: str) -> Dict[str, Any]:
     """Get current roster for a specific MLB team."""
     async with await get_http_client() as client:
         try:
@@ -223,8 +251,9 @@ async def get_team_roster(team_id: str) -> Dict:
             logger.error(f"Error getting team roster for {team_id}: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_injuries() -> Dict:
+async def get_injuries() -> Dict[str, Any]:
     """Get current MLB injury report."""
     async with await get_http_client() as client:
         try:
@@ -235,8 +264,9 @@ async def get_injuries() -> Dict:
             logger.error(f"Error getting injury report: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_game_play_by_play(game_id: str) -> Dict:
+async def get_game_play_by_play(game_id: str) -> Dict[str, Any]:
     """Get detailed play-by-play data for a specific MLB game."""
     async with await get_http_client() as client:
         try:
@@ -247,8 +277,9 @@ async def get_game_play_by_play(game_id: str) -> Dict:
             logger.error(f"Error getting play-by-play for game {game_id}: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_game_pitch_metrics(game_id: str) -> Dict:
+async def get_game_pitch_metrics(game_id: str) -> Dict[str, Any]:
     """Get pitch-level metrics and Statcast data for a specific MLB game."""
     async with await get_http_client() as client:
         try:
@@ -259,34 +290,33 @@ async def get_game_pitch_metrics(game_id: str) -> Dict:
             logger.error(f"Error getting pitch metrics for game {game_id}: {str(e)}")
             raise
 
+
 @mcp.tool()
 async def get_seasonal_statistics(
-    team_id: str,
-    year: Optional[int] = None,
-    season_type: Optional[str] = "REG"
-) -> Dict:
+    team_id: str, year: Optional[int] = None, season_type: Optional[str] = "REG"
+) -> Dict[str, Any]:
     """Get seasonal statistics for a specific team."""
     if year is None:
         year = datetime.now().year
-    
+
     async with await get_http_client() as client:
         try:
-            response = await client.get(f"/en/seasons/{year}/{season_type}/teams/{team_id}/statistics.json")
+            response = await client.get(
+                f"/en/seasons/{year}/{season_type}/teams/{team_id}/statistics.json"
+            )
             response.raise_for_status()
             return response.json()
         except Exception as e:
             logger.error(f"Error getting seasonal statistics for team {team_id}: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_player_seasonal_stats(
-    player_id: str,
-    year: Optional[int] = None
-) -> Dict:
+async def get_player_seasonal_stats(player_id: str, year: Optional[int] = None) -> Dict[str, Any]:
     """Get seasonal statistics for a specific player."""
     if year is None:
         year = datetime.now().year
-    
+
     async with await get_http_client() as client:
         try:
             response = await client.get(f"/en/players/{player_id}/seasons/{year}/statistics.json")
@@ -296,8 +326,9 @@ async def get_player_seasonal_stats(
             logger.error(f"Error getting seasonal stats for player {player_id}: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_transactions(date_str: Optional[str] = None) -> Dict:
+async def get_transactions(date_str: Optional[str] = None) -> Dict[str, Any]:
     """Get MLB transactions for a specific date or recent transactions."""
     async with await get_http_client() as client:
         try:
@@ -308,15 +339,16 @@ async def get_transactions(date_str: Optional[str] = None) -> Dict:
                 response = await client.get(f"/en/league/{year}/{month}/{day}/transactions.json")
             else:
                 response = await client.get("/en/league/transactions.json")
-            
+
             response.raise_for_status()
             return response.json()
         except Exception as e:
             logger.error(f"Error getting transactions: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_draft_summary(year: int) -> Dict:
+async def get_draft_summary(year: int) -> Dict[str, Any]:
     """Get MLB draft summary for a specific year."""
     async with await get_http_client() as client:
         try:
@@ -327,8 +359,9 @@ async def get_draft_summary(year: int) -> Dict:
             logger.error(f"Error getting draft summary for {year}: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_team_hierarchy() -> Dict:
+async def get_team_hierarchy() -> Dict[str, Any]:
     """Get complete MLB team hierarchy with divisions and leagues."""
     async with await get_http_client() as client:
         try:
@@ -339,16 +372,13 @@ async def get_team_hierarchy() -> Dict:
             logger.error(f"Error getting team hierarchy: {str(e)}")
             raise
 
+
 @mcp.tool()
-async def get_seasonal_splits(
-    player_id: str,
-    year: Optional[int] = None,
-    split_type: Optional[str] = "home_away"
-) -> Dict:
+async def get_seasonal_splits(player_id: str, year: Optional[int] = None) -> Dict[str, Any]:
     """Get seasonal splits for a player (home/away, vs lefty/righty, etc.)."""
     if year is None:
         year = datetime.now().year
-    
+
     async with await get_http_client() as client:
         try:
             response = await client.get(f"/en/players/{player_id}/seasons/{year}/splits.json")
@@ -358,7 +388,237 @@ async def get_seasonal_splits(
             logger.error(f"Error getting seasonal splits for player {player_id}: {str(e)}")
             raise
 
-def main():
+
+@mcp.tool()
+async def get_seasonal_pitch_metrics(player_id: str, year: Optional[int] = None) -> Dict[str, Any]:
+    """Get detailed Statcast pitch metrics for a player's season."""
+    if year is None:
+        year = datetime.now().year
+
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(
+                f"/en/players/{player_id}/seasons/{year}/pitch_metrics.json"
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting seasonal pitch metrics for player {player_id}: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_statcast_leaders(
+    year: Optional[int] = None, category: Optional[str] = "exit_velocity"
+) -> Dict[str, Any]:
+    """Get Statcast leaderboards (exit_velocity, launch_angle, barrel_rate, etc.)."""
+    if year is None:
+        year = datetime.now().year
+
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(f"/en/seasons/{year}/statcast_leaders.json")
+            response.raise_for_status()
+            data = response.json()
+
+            # Filter by category if specified
+            if category and "leaders" in data:
+                category_data = {}
+                for key, value in data["leaders"].items():
+                    if category.lower() in key.lower():
+                        category_data[key] = value
+                if category_data:
+                    return {"leaders": category_data, "category": category, "year": year}
+
+            return data
+        except Exception as e:
+            logger.error(f"Error getting Statcast leaders for {year}: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_live_game_feed(game_id: str) -> Dict[str, Any]:
+    """Get live game feed with real-time updates and current game situation."""
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(f"/en/games/{game_id}/live.json")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting live game feed for {game_id}: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_event_tracking(game_id: str) -> Dict[str, Any]:
+    """Get detailed event tracking data with Statcast metrics for a game."""
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(f"/en/games/{game_id}/events.json")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting event tracking for game {game_id}: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_player_career_stats(player_id: str) -> Dict[str, Any]:
+    """Get comprehensive career statistics for a player across all seasons."""
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(f"/en/players/{player_id}/career.json")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting career stats for player {player_id}: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_situational_stats(
+    player_id: str, year: Optional[int] = None, situation: Optional[str] = "clutch"
+) -> Dict[str, Any]:
+    """Get situational statistics (clutch, RISP, late_innings, etc.) for a player."""
+    if year is None:
+        year = datetime.now().year
+
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(f"/en/players/{player_id}/seasons/{year}/situational.json")
+            response.raise_for_status()
+            data = response.json()
+
+            # Filter by situation if specified
+            if situation and "situations" in data:
+                situation_data = {}
+                for key, value in data["situations"].items():
+                    if situation.lower() in key.lower():
+                        situation_data[key] = value
+                if situation_data:
+                    return {"situations": situation_data, "situation": situation, "year": year}
+
+            return data
+        except Exception as e:
+            logger.error(f"Error getting situational stats for player {player_id}: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_team_matchup_stats(
+    team1_id: str, team2_id: str, year: Optional[int] = None
+) -> Dict[str, Any]:
+    """Get head-to-head matchup statistics between two teams."""
+    if year is None:
+        year = datetime.now().year
+
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(f"/en/seasons/{year}/teams/{team1_id}/vs/{team2_id}.json")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting matchup stats between {team1_id} and {team2_id}: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_pitcher_vs_batter_stats(
+    pitcher_id: str, batter_id: str, year: Optional[int] = None
+) -> Dict[str, Any]:
+    """Get historical matchup statistics between a specific pitcher and batter."""
+    if year is None:
+        year = datetime.now().year
+
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(f"/en/matchups/{pitcher_id}/vs/{batter_id}.json")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting pitcher vs batter stats: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_venue_stats(venue_id: str, year: Optional[int] = None) -> Dict[str, Any]:
+    """Get ballpark factors and venue-specific statistics."""
+    if year is None:
+        year = datetime.now().year
+
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(f"/en/venues/{venue_id}/seasons/{year}/stats.json")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting venue stats for {venue_id}: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_weather_conditions(game_id: str) -> Dict[str, Any]:
+    """Get weather conditions and their potential impact on game play."""
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(f"/en/games/{game_id}/weather.json")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting weather conditions for game {game_id}: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_trend_analysis(
+    player_id: str, stat_type: str = "batting_average", period: str = "last_30_games"
+) -> Dict[str, Any]:
+    """Get trend analysis for player performance over specified periods."""
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(
+                f"/en/players/{player_id}/trends.json?stat={stat_type}&period={period}"
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting trend analysis for player {player_id}: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_team_rankings(year: Optional[int] = None) -> Dict[str, Any]:
+    """Get comprehensive team rankings across all statistical categories."""
+    if year is None:
+        year = datetime.now().year
+
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(f"/en/seasons/{year}/team_rankings.json")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting team rankings for {year}: {str(e)}")
+            raise
+
+
+@mcp.tool()
+async def get_prospect_rankings(year: Optional[int] = None) -> Dict[str, Any]:
+    """Get minor league prospect rankings and scouting information."""
+    if year is None:
+        year = datetime.now().year
+
+    async with await get_http_client() as client:
+        try:
+            response = await client.get(f"/en/seasons/{year}/prospects.json")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error getting prospect rankings for {year}: {str(e)}")
+            raise
+
+
+def main() -> None:
     """Main entry point for the MCP server."""
     logger.info("Starting MLB SportRadar MCP Server...")
     try:
@@ -367,12 +627,13 @@ def main():
             logger.error("SPORTRADAR_API_KEY environment variable is not set")
             print("SPORTRADAR_API_KEY environment variable is not set", file=sys.stderr)
             sys.exit(1)
-            
+
         logger.info("API key found. Starting server...")
         mcp.run()
     except Exception as e:
         print(f"Failed to run server: {str(e)}", file=sys.stderr)
         raise
+
 
 if __name__ == "__main__":
     main()

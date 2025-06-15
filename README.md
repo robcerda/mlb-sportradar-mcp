@@ -122,7 +122,7 @@ Once configured, Claude Desktop will have access to these MLB SportRadar tools:
 
 **Example queries to try with Claude:**
 - "Show me today's MLB schedule"
-- "Get the current AL standings" 
+- "Get the current AL standings"
 - "What are the current batting leaders in MLB?"
 - "Show me the injury report for MLB"
 - "Get play-by-play data for game [game_id]"
@@ -188,3 +188,4 @@ Please be aware of SportRadar's API rate limits. The trial API typically has low
 ## License
 
 MIT
+# Test change
