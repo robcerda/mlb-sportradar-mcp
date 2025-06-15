@@ -27,36 +27,24 @@ Usage:
         $ python src/mlb_sportradar_mcp/server.py
 
     MCP tools provided:
-        Game Data & Live Updates:
+        Game Data & Analysis:
             - get_daily_schedule: Daily game schedules
             - get_game_summary: Game summaries and results
             - get_game_boxscore: Detailed boxscores
             - get_game_play_by_play: Play-by-play data
-            - get_live_game_feed: Real-time game updates
-            - get_event_tracking: Detailed event tracking with Statcast
-            - get_weather_conditions: Weather impact analysis
+            - get_game_pitch_metrics: Pitch-level Statcast data
 
         Statcast & Advanced Analytics:
-            - get_game_pitch_metrics: Pitch-level Statcast data
             - get_seasonal_pitch_metrics: Player season pitching analytics
             - get_statcast_leaders: Statcast leaderboards
-            - get_venue_stats: Ballpark factors and statistics
 
         Player & Team Statistics:
             - get_player_profile: Player information and stats
             - get_player_seasonal_stats: Seasonal performance
-            - get_player_career_stats: Complete career statistics
             - get_team_profile: Team information
             - get_team_roster: Current team rosters
             - get_seasonal_statistics: Team seasonal stats
-            - get_team_rankings: Comprehensive team rankings
-
-        Situational & Matchup Analysis:
-            - get_situational_stats: Clutch, RISP, late-inning performance
             - get_seasonal_splits: Home/away, vs lefty/righty splits
-            - get_team_matchup_stats: Head-to-head team statistics
-            - get_pitcher_vs_batter_stats: Individual matchup history
-            - get_trend_analysis: Performance trends over time
 
         League Information:
             - get_standings: League and division standings
@@ -65,7 +53,6 @@ Usage:
             - get_injuries: Current injury reports
             - get_transactions: Player transactions
             - get_draft_summary: Draft information
-            - get_prospect_rankings: Minor league prospects
 
     See the README for more details on configuration and usage.
 """
@@ -100,7 +87,7 @@ if not SPORTRADAR_API_KEY:
 mcp = FastMCP("mlb-sportradar-mcp")
 
 # SportRadar MLB API base URL
-BASE_URL = "https://api.sportradar.com/mlb/trial/v8"
+BASE_URL = "https://api.sportradar.com/mlb/production/v8"
 
 
 async def get_http_client() -> httpx.AsyncClient:
@@ -401,7 +388,7 @@ async def get_seasonal_pitch_metrics(player_id: str, year: Optional[int] = None)
                 f"/en/players/{player_id}/seasons/{year}/pitch_metrics.json"
             )
             response.raise_for_status()
-            return response.json()
+            return response.json()  # type: ignore[no-any-return]
         except Exception as e:
             logger.error(f"Error getting seasonal pitch metrics for player {player_id}: {str(e)}")
             raise
@@ -419,7 +406,7 @@ async def get_statcast_leaders(
         try:
             response = await client.get(f"/en/seasons/{year}/statcast_leaders.json")
             response.raise_for_status()
-            data = response.json()
+            data = response.json()  # type: ignore[no-any-return]
 
             # Filter by category if specified
             if category and "leaders" in data:
@@ -433,188 +420,6 @@ async def get_statcast_leaders(
             return data
         except Exception as e:
             logger.error(f"Error getting Statcast leaders for {year}: {str(e)}")
-            raise
-
-
-@mcp.tool()
-async def get_live_game_feed(game_id: str) -> Dict[str, Any]:
-    """Get live game feed with real-time updates and current game situation."""
-    async with await get_http_client() as client:
-        try:
-            response = await client.get(f"/en/games/{game_id}/live.json")
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"Error getting live game feed for {game_id}: {str(e)}")
-            raise
-
-
-@mcp.tool()
-async def get_event_tracking(game_id: str) -> Dict[str, Any]:
-    """Get detailed event tracking data with Statcast metrics for a game."""
-    async with await get_http_client() as client:
-        try:
-            response = await client.get(f"/en/games/{game_id}/events.json")
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"Error getting event tracking for game {game_id}: {str(e)}")
-            raise
-
-
-@mcp.tool()
-async def get_player_career_stats(player_id: str) -> Dict[str, Any]:
-    """Get comprehensive career statistics for a player across all seasons."""
-    async with await get_http_client() as client:
-        try:
-            response = await client.get(f"/en/players/{player_id}/career.json")
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"Error getting career stats for player {player_id}: {str(e)}")
-            raise
-
-
-@mcp.tool()
-async def get_situational_stats(
-    player_id: str, year: Optional[int] = None, situation: Optional[str] = "clutch"
-) -> Dict[str, Any]:
-    """Get situational statistics (clutch, RISP, late_innings, etc.) for a player."""
-    if year is None:
-        year = datetime.now().year
-
-    async with await get_http_client() as client:
-        try:
-            response = await client.get(f"/en/players/{player_id}/seasons/{year}/situational.json")
-            response.raise_for_status()
-            data = response.json()
-
-            # Filter by situation if specified
-            if situation and "situations" in data:
-                situation_data = {}
-                for key, value in data["situations"].items():
-                    if situation.lower() in key.lower():
-                        situation_data[key] = value
-                if situation_data:
-                    return {"situations": situation_data, "situation": situation, "year": year}
-
-            return data
-        except Exception as e:
-            logger.error(f"Error getting situational stats for player {player_id}: {str(e)}")
-            raise
-
-
-@mcp.tool()
-async def get_team_matchup_stats(
-    team1_id: str, team2_id: str, year: Optional[int] = None
-) -> Dict[str, Any]:
-    """Get head-to-head matchup statistics between two teams."""
-    if year is None:
-        year = datetime.now().year
-
-    async with await get_http_client() as client:
-        try:
-            response = await client.get(f"/en/seasons/{year}/teams/{team1_id}/vs/{team2_id}.json")
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"Error getting matchup stats between {team1_id} and {team2_id}: {str(e)}")
-            raise
-
-
-@mcp.tool()
-async def get_pitcher_vs_batter_stats(
-    pitcher_id: str, batter_id: str, year: Optional[int] = None
-) -> Dict[str, Any]:
-    """Get historical matchup statistics between a specific pitcher and batter."""
-    if year is None:
-        year = datetime.now().year
-
-    async with await get_http_client() as client:
-        try:
-            response = await client.get(f"/en/matchups/{pitcher_id}/vs/{batter_id}.json")
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"Error getting pitcher vs batter stats: {str(e)}")
-            raise
-
-
-@mcp.tool()
-async def get_venue_stats(venue_id: str, year: Optional[int] = None) -> Dict[str, Any]:
-    """Get ballpark factors and venue-specific statistics."""
-    if year is None:
-        year = datetime.now().year
-
-    async with await get_http_client() as client:
-        try:
-            response = await client.get(f"/en/venues/{venue_id}/seasons/{year}/stats.json")
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"Error getting venue stats for {venue_id}: {str(e)}")
-            raise
-
-
-@mcp.tool()
-async def get_weather_conditions(game_id: str) -> Dict[str, Any]:
-    """Get weather conditions and their potential impact on game play."""
-    async with await get_http_client() as client:
-        try:
-            response = await client.get(f"/en/games/{game_id}/weather.json")
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"Error getting weather conditions for game {game_id}: {str(e)}")
-            raise
-
-
-@mcp.tool()
-async def get_trend_analysis(
-    player_id: str, stat_type: str = "batting_average", period: str = "last_30_games"
-) -> Dict[str, Any]:
-    """Get trend analysis for player performance over specified periods."""
-    async with await get_http_client() as client:
-        try:
-            response = await client.get(
-                f"/en/players/{player_id}/trends.json?stat={stat_type}&period={period}"
-            )
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"Error getting trend analysis for player {player_id}: {str(e)}")
-            raise
-
-
-@mcp.tool()
-async def get_team_rankings(year: Optional[int] = None) -> Dict[str, Any]:
-    """Get comprehensive team rankings across all statistical categories."""
-    if year is None:
-        year = datetime.now().year
-
-    async with await get_http_client() as client:
-        try:
-            response = await client.get(f"/en/seasons/{year}/team_rankings.json")
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"Error getting team rankings for {year}: {str(e)}")
-            raise
-
-
-@mcp.tool()
-async def get_prospect_rankings(year: Optional[int] = None) -> Dict[str, Any]:
-    """Get minor league prospect rankings and scouting information."""
-    if year is None:
-        year = datetime.now().year
-
-    async with await get_http_client() as client:
-        try:
-            response = await client.get(f"/en/seasons/{year}/prospects.json")
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.error(f"Error getting prospect rankings for {year}: {str(e)}")
             raise
 
 
